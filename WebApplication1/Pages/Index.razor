@@ -1,0 +1,206 @@
+﻿@page "/"
+@using WebApplication1.Logic
+@using WebApplication1.Data
+@using Microsoft.EntityFrameworkCore
+
+@inject IDbContextFactory<ApplicationDbContext> MyContextFactory
+
+<h1 class="alert alert-info">Liste des équipes disponibles !</h1>
+<TelerikGrid Data="@Equipes"
+             Pageable="true"
+             Sortable="true"
+             Groupable="true"
+             OnCreate="CreateItemHandler"
+             OnUpdate="UpdateItemHandler"
+             OnDelete="DeleteItemHandler"
+             EditMode="Telerik.Blazor.GridEditMode.Popup">
+    <GridToolBar>
+        <GridCommandButton Command="Add" Icon="add">Nouvelle équipe</GridCommandButton>
+    </GridToolBar>
+    <GridColumns>
+        <GridColumn Field="@(nameof(Equipe.Id))" />
+        <GridColumn Field="@(nameof(Equipe.Designation))" />
+        <GridCommandColumn>
+            <GridCommandButton Command="Save" Icon="save" ShowInEdit="true">Actualiser</GridCommandButton>
+            <GridCommandButton Command="Edit" Icon="edit">Editer</GridCommandButton>
+            <GridCommandButton Command="Delete" Icon="delete">Supprimer</GridCommandButton>
+        </GridCommandColumn>
+    </GridColumns>
+
+</TelerikGrid>
+<br />
+<h1 class="alert alert-info">Liste des Programmeurs !</h1>
+<h2>Valeur qui a changé : @ValeurSelectionnee</h2>
+<TelerikGrid Data="@Programmeurs"
+             Pageable="true"
+             Sortable="true"
+             Groupable="true"
+             OnCreate="CreateItem"
+             OnUpdate="UpdateItem"
+             OnDelete="DeleteItem"
+             EditMode="Telerik.Blazor.GridEditMode.Popup">
+    <GridToolBar>
+        <GridCommandButton Command="Add" Icon="add">Nouveau programmeur</GridCommandButton>
+    </GridToolBar>
+    <GridColumns>
+        <GridColumn Field="@(nameof(Programmeur.Id))" />
+        <GridColumn Field="@(nameof(Programmeur.Firstname))" />
+        <GridColumn Field="@(nameof(Programmeur.Lastname))" />
+        <GridColumn Field="@(nameof(Programmeur.DateOfBirth))" Title="Date de naissance" />
+        <GridColumn Field="@(nameof(Programmeur.EquipeId))" Title="Equipe Tech">
+            <Template>
+                @{
+                    int equipeId = (context as Programmeur).EquipeId;
+                    <text>@RechercheParTeamId(equipeId)</text>
+                 }
+            </Template>
+            <EditorTemplate>
+                @{
+                    ChargerEquipes();
+                    <TelerikDropDownList Data="@Equipes"
+                                         @bind-Value="@ValeurSelectionnee"
+                                         TextField="Designation"
+                                         ValueField="Id">
+                    </TelerikDropDownList>
+                }
+            </EditorTemplate>
+        </GridColumn>
+        <GridCommandColumn>
+            <GridCommandButton Command="Save" Icon="save" ShowInEdit="true">Actualiser</GridCommandButton>
+            <GridCommandButton Command="Edit" Icon="edit">Editer</GridCommandButton>
+            <GridCommandButton Command="Delete" Icon="delete">Supprimer</GridCommandButton>
+        </GridCommandColumn>
+    </GridColumns>
+
+</TelerikGrid>
+@code
+{
+    public List<Equipe> Equipes = new List<Equipe>();
+    Equipe equipe = new Equipe();
+
+    public List<Programmeur> Programmeurs = new List<Programmeur>();
+    Programmeur programmeur = new Programmeur();
+
+    int ValeurSelectionnee;
+    string NomEquipeChangee;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ChargerEquipes();
+        await ChargerProgrammeurs();
+    }
+
+    public async Task ChargerEquipes()
+    {
+        using (var contextFactory = MyContextFactory.CreateDbContext())
+        {
+            Equipes = await contextFactory.Equipes.ToListAsync();
+        }
+    }
+
+    public string RechercheParTeamId(int equipeId)
+    {
+        using (var cxf = MyContextFactory.CreateDbContext())
+        {
+            var element = cxf.Equipes.FirstOrDefault(c => c.Id == equipeId);
+            if (element != null)
+            {
+                NomEquipeChangee = element.Designation;
+            }
+        }
+        return NomEquipeChangee;
+    }
+
+    public async Task ChargerProgrammeurs()
+    {
+        using (var contextFactory = MyContextFactory.CreateDbContext())
+        {
+            Programmeurs = await contextFactory.Programmeurs.ToListAsync();
+        }
+    }
+
+    public async Task CreateItemHandler(GridCommandEventArgs ars)
+    {
+        using (var myLocalFactory = MyContextFactory.CreateDbContext())
+        {
+            equipe = ars.Item as Equipe;
+            if (equipe != null)
+            {
+                myLocalFactory.Equipes.Add(equipe);
+                await myLocalFactory.SaveChangesAsync();
+                await ChargerEquipes();
+            }
+        }
+    }
+    public async Task CreateItem(GridCommandEventArgs ars)
+    {
+        using (var myLocalFactory = MyContextFactory.CreateDbContext())
+        {
+            programmeur = ars.Item as Programmeur;
+            if (programmeur != null)
+            {
+                programmeur.EquipeId = ValeurSelectionnee;
+                myLocalFactory.Programmeurs.Add(programmeur);
+                await myLocalFactory.SaveChangesAsync();
+                await ChargerProgrammeurs();
+            }
+        }
+    }
+
+    public async Task UpdateItemHandler(GridCommandEventArgs ars)
+    {
+        using (var myLocalFactory = MyContextFactory.CreateDbContext())
+        {
+            equipe = ars.Item as Equipe;
+            if (equipe != null)
+            {
+                myLocalFactory.Equipes.Update(equipe);
+                await myLocalFactory.SaveChangesAsync();
+                await ChargerEquipes();
+            }
+        }
+    }
+
+    public async Task UpdateItem(GridCommandEventArgs ars)
+    {
+        using (var myLocalFactory = MyContextFactory.CreateDbContext())
+        {
+            programmeur = ars.Item as Programmeur;
+            if (programmeur != null)
+            {
+                programmeur.EquipeId = ValeurSelectionnee;
+                myLocalFactory.Programmeurs.Update(programmeur);
+                await myLocalFactory.SaveChangesAsync();
+                await ChargerProgrammeurs();
+            }
+        }
+    }
+
+    public async Task DeleteItemHandler(GridCommandEventArgs ars)
+    {
+        using (var myLocalFactory = MyContextFactory.CreateDbContext())
+        {
+            equipe = ars.Item as Equipe;
+            if (equipe != null)
+            {
+                myLocalFactory.Equipes.Remove(equipe);
+                await myLocalFactory.SaveChangesAsync();
+                await ChargerEquipes();
+            }
+        }
+    }
+
+    public async Task DeleteItem(GridCommandEventArgs ars)
+    {
+        using (var myLocalFactory = MyContextFactory.CreateDbContext())
+        {
+            programmeur = ars.Item as Programmeur;
+            if (programmeur != null)
+            {
+                myLocalFactory.Programmeurs.Remove(programmeur);
+                await myLocalFactory.SaveChangesAsync();
+                await ChargerProgrammeurs();
+            }
+        }
+    }
+}
